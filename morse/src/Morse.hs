@@ -69,10 +69,10 @@ morseToChar :: Morse -> Maybe Char
 morseToChar m = M.lookup m morseToLetter
 
 stringToMorse :: String -> Maybe [Morse]
-stringToMorse = mapM charToMorse
+stringToMorse = traverse charToMorse
 
 morseToString :: [Morse] -> Maybe String
-morseToString = mapM morseToChar
+morseToString = traverse morseToChar
 
 stringToMorse' :: String -> [Morse]
 stringToMorse' = map (fromMaybe "?" . charToMorse)
