@@ -29,3 +29,6 @@ instance (Applicative f, Applicative g) => Applicative (Compose f g) where
 
 instance (Foldable f, Foldable g) => Foldable (Compose f g) where
   foldMap f (Compose fga) = foldMap (foldMap f) fga
+
+instance (Traversable f, Traversable g) => Traversable (Compose f g) where
+  traverse f (Compose fga) = Compose <$> traverse (traverse f) fga
