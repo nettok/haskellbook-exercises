@@ -91,3 +91,49 @@ data Either a b = Left a | Right b
 instance Bifunctor Either where
   bimap f _ (Left a) = Left (f a)
   bimap _ g (Right b) = Right (g b)
+
+
+-- 25.8 Implement IdentityT Functor, Applicative and Monad instances (page 961)
+-- `newtype Identity a` is already implemented above
+-- `instance Functor Identity` is already implemented above
+
+instance Applicative Identity where
+  pure = Identity
+  Identity f <*> Identity a = Identity $ f a
+
+instance Monad Identity where
+  return = pure
+  Identity a >>= famb = famb a
+
+newtype IdentityT f a =
+  IdentityT { runIdentityT :: f a }
+  deriving (Eq, Show)
+
+instance (Functor m) => Functor (IdentityT m) where
+  fmap f (IdentityT fa) = IdentityT $ fmap f fa
+
+instance (Applicative m) => Applicative (IdentityT m) where
+  pure a = IdentityT $ pure a
+  IdentityT mfa <*> IdentityT ma = IdentityT $ mfa <*> ma
+
+instance (Monad m) => Monad (IdentityT m) where
+  return = pure
+  IdentityT ma >>= fmb = IdentityT $ ma >>= fmap runIdentityT fmb
+
+-- test
+
+id0 :: IdentityT IO Int
+id0 = IdentityT $ do
+  print "hola"
+  return 4
+
+id1 :: Int -> IdentityT IO Int
+id1 n = IdentityT $ do
+  print "mundo"
+  return $ n + 5
+
+main :: IO ()
+main = do
+  n <- runIdentityT $ id0 >>= id1
+  print n
+  return ()
