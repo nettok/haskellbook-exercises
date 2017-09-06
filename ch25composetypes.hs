@@ -2,6 +2,7 @@
 
 module Chapter25ComposeTypes where
 
+import Control.Monad.IO.Class
 import Prelude hiding (Either(..))
 
 newtype Identity a =
@@ -118,18 +119,21 @@ instance (Applicative m) => Applicative (IdentityT m) where
 
 instance (Monad m) => Monad (IdentityT m) where
   return = pure
-  IdentityT ma >>= fmb = IdentityT $ ma >>= fmap runIdentityT fmb
+  IdentityT ma >>= fmb = IdentityT $ ma >>= runIdentityT . fmb
+
+instance (MonadIO m) => MonadIO (IdentityT m) where
+  liftIO = IdentityT . liftIO
 
 -- test
 
 id0 :: IdentityT IO Int
-id0 = IdentityT $ do
-  print "hola"
+id0 = do
+  liftIO $ print "hola"
   return 4
 
 id1 :: Int -> IdentityT IO Int
-id1 n = IdentityT $ do
-  print "mundo"
+id1 n = do
+  liftIO $ print "mundo"
   return $ n + 5
 
 main :: IO ()
