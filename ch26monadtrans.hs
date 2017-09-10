@@ -107,4 +107,20 @@ instance (Monad m) => Monad (ReaderT r m) where
   (ReaderT rma) >>= f = ReaderT $ \r -> rma r >>= (\a -> (runReaderT $ f a) r)
 
 -- 26.5 StateT
--- TODO
+
+newtype StateT s m a =
+  StateT { runStateT :: s -> m (a, s) }
+
+first :: (a -> b) -> (a, s) -> (b, s)
+first f (a, s) = (f a, s)
+
+instance (Functor m) => Functor (StateT s m) where
+  fmap f (StateT smas) = StateT $ (fmap . fmap) (first f) smas
+
+instance (Monad m) => Applicative (StateT s m) where
+  pure a = StateT $ \s -> pure (a, s)
+  (StateT smfs) <*> (StateT smas) = StateT $ smfs >=> \(f,s) -> fmap (first f) (smas s)
+
+instance (Monad m) => Monad (StateT s m) where
+  return = pure
+  (StateT smas) >>= f = StateT $ smas >=> \(a,s) -> runStateT (f a) s
