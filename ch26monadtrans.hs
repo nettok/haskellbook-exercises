@@ -81,11 +81,30 @@ swapEitherT (EitherT mea) = EitherT $ fmap swapEither mea
 
 eitherT :: Monad m =>
            (a -> m c)
-       ->  (b -> m c)
-       -> EitherT a m b
-       -> m c
+        -> (b -> m c)
+        -> EitherT a m b
+        -> m c
 eitherT famc fbmc (EitherT mab) = do
   ab <- mab
   case ab of
     Left a  -> famc a
     Right b -> fbmc b
+
+-- 26.4 ReaderT
+
+newtype ReaderT r m a =
+  ReaderT { runReaderT :: r -> m a }
+
+instance (Functor m) => Functor (ReaderT r m) where
+  fmap f (ReaderT rma) = ReaderT $ (fmap . fmap) f rma
+
+instance (Applicative m) => Applicative (ReaderT r m) where
+  pure a = ReaderT $ pure $ pure a
+  (ReaderT rmf) <*> (ReaderT rma) = ReaderT $ fmap (<*>) rmf <*> rma
+
+instance (Monad m) => Monad (ReaderT r m) where
+  return = pure
+  (ReaderT rma) >>= f = ReaderT $ \r -> rma r >>= (\a -> (runReaderT $ f a) r)
+
+-- 26.5 StateT
+-- TODO
