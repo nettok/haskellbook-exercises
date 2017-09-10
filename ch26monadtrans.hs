@@ -52,4 +52,40 @@ main = do
   return ()
 
 -- 26.3 EitherT
--- TODO
+
+newtype EitherT e m a =
+  EitherT { runEitherT :: m (Either e a) }
+
+instance (Functor m) => Functor (EitherT e m) where
+  fmap f (EitherT mea) = EitherT $ (fmap . fmap) f mea
+
+instance (Applicative m) => Applicative (EitherT e m) where
+  pure a = EitherT $ pure $ Right a
+  (EitherT mef) <*> (EitherT mea) = EitherT $ fmap (<*>) mef <*> mea
+
+instance (Monad m) => Monad (EitherT e m) where
+  fail = EitherT . fail
+  return = pure
+  (EitherT mea) >>= f = EitherT $ do
+    ea <- mea
+    case ea of
+      Left e  -> return $ Left e
+      Right a -> runEitherT $ f a
+
+swapEither :: Either e a -> Either a e
+swapEither (Left e)  = Right e
+swapEither (Right a) = Left a
+
+swapEitherT :: (Functor m) => EitherT e m a -> EitherT a m e
+swapEitherT (EitherT mea) = EitherT $ fmap swapEither mea
+
+eitherT :: Monad m =>
+           (a -> m c)
+       ->  (b -> m c)
+       -> EitherT a m b
+       -> m c
+eitherT famc fbmc (EitherT mab) = do
+  ab <- mab
+  case ab of
+    Left a  -> famc a
+    Right b -> fbmc b
