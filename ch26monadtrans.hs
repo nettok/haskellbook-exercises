@@ -4,6 +4,7 @@ module Chapter26MonadTrans where
 
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Except
 
 -- 26.2 MaybeT
 
@@ -124,3 +125,8 @@ instance (Monad m) => Applicative (StateT s m) where
 instance (Monad m) => Monad (StateT s m) where
   return = pure
   (StateT smas) >>= f = StateT $ smas >=> \(a,s) -> runStateT (f a) s
+
+-- 26.8 Lexically inner is structurally outer: Wrap it up
+
+embedded :: MaybeT (ExceptT String (ReaderT () IO)) Int
+embedded = MaybeT $ ExceptT $ ReaderT (return . const (Right (Just 1)))
