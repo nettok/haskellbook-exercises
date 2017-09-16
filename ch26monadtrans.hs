@@ -4,6 +4,7 @@ module Chapter26MonadTrans where
 
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 
 -- 26.2 MaybeT
@@ -26,12 +27,6 @@ instance (Monad m) => Monad (MaybeT m) where
     case ma of
       Nothing -> return Nothing
       Just a  -> runMaybeT $ famb a
-
-liftMaybeT :: (Monad m) => m a -> MaybeT m a
-liftMaybeT = MaybeT . liftM Just
-
-instance (MonadIO m) => MonadIO (MaybeT m) where
-  liftIO = liftMaybeT . liftIO
 
 -- test MaybeT
 
@@ -130,3 +125,25 @@ instance (Monad m) => Monad (StateT s m) where
 
 embedded :: MaybeT (ExceptT String (ReaderT () IO)) Int
 embedded = MaybeT $ ExceptT $ ReaderT (return . const (Right (Just 1)))
+
+ -- 26.9 Exercices: Lift More
+
+instance MonadTrans (EitherT e) where
+  lift = EitherT . liftM Right
+
+instance MonadTrans (StateT s) where
+  lift ma = StateT $ \s -> liftM (\a -> (a, s)) ma
+
+-- 26.10 Exercices: Some Instances
+
+liftMaybeT :: (Monad m) => m a -> MaybeT m a
+liftMaybeT = MaybeT . liftM Just
+
+instance (MonadIO m) => MonadIO (MaybeT m) where
+  liftIO = liftMaybeT . liftIO
+
+instance (MonadIO m) => MonadIO (ReaderT r m) where
+  liftIO = ReaderT . const . liftIO
+
+instance (MonadIO m) => MonadIO (StateT s m) where
+  liftIO = lift . liftIO
