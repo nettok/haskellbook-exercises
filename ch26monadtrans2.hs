@@ -62,6 +62,7 @@ data GameState = GameState {
 data Player = Player {
     name :: String
   , score :: Score
+  , isHuman :: Bool
   } deriving (Show)
 
 data Turn = Turn {
@@ -73,8 +74,8 @@ type Score = Int
 
 initialGameState :: GameState
 initialGameState = GameState {
-    p1 = Player { name = "p1", score = 0 }
-  , p2 = Player { name = "p2", score = 0 }
+    p1 = Player { name = "p1", score = 0, isHuman = True }
+  , p2 = Player { name = "p2", score = 0, isHuman = False }
   , turn = Turn {
              currentPlayer = p1
            , updateCurrentPlayer = \gs p -> gs { p1 = p }
@@ -111,10 +112,17 @@ changeTurn = get >>= (put . alternateTurns)
 playerInput :: StateT GameState IO ()
 playerInput = do
   gs <- get
-  liftIO $ putStr (playerName gs ++ ": ")
-  inputS <- liftIO getLine
-  let points = read inputS
+  points <- liftIO $ (if isHuman $ player gs then humanInput else robotInput) gs
   incrPlayerScore points
+
+humanInput :: GameState -> IO Score
+humanInput gs = do
+  putStr (playerName gs ++ ": ")
+  inputS <- getLine
+  return $ read inputS
+
+robotInput :: GameState -> IO Score
+robotInput _ = return 1 -- TODO: improve
 
 incrPlayerScore :: Score -> StateT GameState IO ()
 incrPlayerScore n = do
