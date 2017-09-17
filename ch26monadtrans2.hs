@@ -30,13 +30,13 @@ sPrintIncAccum = StateT $ \s -> do
 
 -- Fix the code
 
-isValid :: String -> Bool
-isValid v = '!' `elem` v
+exciteIsValid :: String -> Bool
+exciteIsValid v = '!' `elem` v
 
 maybeExcite :: MaybeT IO String
 maybeExcite = do
   v <- liftIO getLine
-  guard $ isValid v
+  guard $ exciteIsValid v
   return v
 
 doExcite :: IO ()
@@ -50,4 +50,100 @@ doExcite = do
 -- Hit counter (see "ch26scotty" project)
 
 -- Morra
--- TODO
+-- TODO: the current implementation is not really "Morra", but a basic skeleton for a turn based game
+
+data GameState = GameState {
+    p1 :: Player
+  , p2 :: Player
+  , turn :: Turn
+  , winner :: Maybe Player
+  }
+
+data Player = Player {
+    name :: String
+  , score :: Score
+  } deriving (Show)
+
+data Turn = Turn {
+    currentPlayer :: GameState -> Player
+  , updateCurrentPlayer :: GameState -> Player -> GameState
+  }
+
+type Score = Int
+
+initialGameState :: GameState
+initialGameState = GameState {
+    p1 = Player { name = "p1", score = 0 }
+  , p2 = Player { name = "p2", score = 0 }
+  , turn = Turn {
+             currentPlayer = p1
+           , updateCurrentPlayer = \gs p -> gs { p1 = p }
+           }
+  , winner = Nothing
+  }
+
+alternateTurns :: GameState -> GameState
+alternateTurns gs = if playerName gs == name (p1 gs)
+                      then gs { turn = Turn {
+                                         currentPlayer = p2
+                                       , updateCurrentPlayer = \gs' p -> gs' { p2 = p }
+                                       }
+                              }
+                      else gs { turn = Turn {
+                                         currentPlayer = p1
+                                       , updateCurrentPlayer = \gs' p -> gs' { p1 = p }
+                                       }
+                              }
+
+gameLoop :: StateT GameState IO ()
+gameLoop = do
+  playerInput
+  gs <- get
+  when (playerScore gs >= 10) playerWins
+  gs' <- get
+  case winner gs' of
+    Nothing -> changeTurn >> gameLoop
+    Just _ -> return ()
+
+changeTurn :: StateT GameState IO ()
+changeTurn = get >>= (put . alternateTurns)
+
+playerInput :: StateT GameState IO ()
+playerInput = do
+  gs <- get
+  liftIO $ putStr (playerName gs ++ ": ")
+  inputS <- liftIO getLine
+  let points = read inputS
+  incrPlayerScore points
+
+incrPlayerScore :: Score -> StateT GameState IO ()
+incrPlayerScore n = do
+  gs <- get
+  put $ updatePlayerWith gs (\p -> p { score = playerScore gs + n })
+
+playerWins :: StateT GameState IO ()
+playerWins = get >>= (put . (\gs -> gs { winner = Just $ player gs }))
+
+player :: GameState -> Player
+player gs = currentPlayer (turn gs) gs
+
+playerName :: GameState -> String
+playerName = name . player
+
+playerScore :: GameState -> Score
+playerScore = score . player
+
+updatePlayer :: GameState -> Player -> GameState
+updatePlayer gs = updateCurrentPlayer (turn gs) gs
+
+updatePlayerWith :: GameState -> (Player -> Player) -> GameState
+updatePlayerWith gs f = updatePlayer gs (f $ player gs)
+
+main :: IO ()
+main = do
+  (_, gs) <- runStateT gameLoop initialGameState
+  putStrLn ""
+  putStrLn "Resultados:"
+  print $ p1 gs
+  print $ p2 gs
+  putStrLn $ "Ganador: " ++ show (winner gs)
